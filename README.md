@@ -409,26 +409,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ---
 
-## 👨‍💻 Authors
-
-**Project Lead:**
-
-- Your Name - [@yourhandle](https://github.com/yourhandle)
-
----
-
-## 🙏 Acknowledgments
-
-Special thanks to:
-
-- 🧠 **Scikit-learn** team for the amazing ML library
-- ⚡ **FastAPI** creators for the blazing-fast framework
-- ⚛️ **Next.js** team for the excellent React framework
-- 🐳 **Docker** for making deployment a breeze
-- 💚 **PostgreSQL** for the reliable database
-
----
-
 <div align="center">
 
 ### ⭐ Star this project if you find it useful
