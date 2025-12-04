@@ -5,6 +5,14 @@ from app.core.database import Base, engine
 from app.api.endpoints import auth, patients, predictions
 from app.ml.load_models import get_ml_models
 
+# Load models globally
+try:
+    print("Loading ML models globally...")
+    get_ml_models()
+    print("ML models loaded successfully!")
+except Exception as e:
+    print(f"Warning: Could not preload models: {e}")
+    
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
@@ -53,3 +61,4 @@ def root():
 def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
+
