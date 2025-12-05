@@ -34,9 +34,9 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(auth.router, prefix="/api/auth")
-app.include_router(patients.router, prefix="/api/patients")
-app.include_router(predictions.router, prefix="/api/predictions")
+app.include_router(auth.router, tags=["auth"])
+app.include_router(patients.router, tags=["patients"])
+app.include_router(predictions.router, tags=["predictions"])
 
 
 @app.on_event("startup")
@@ -61,5 +61,6 @@ def root():
 def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
+
 
 
