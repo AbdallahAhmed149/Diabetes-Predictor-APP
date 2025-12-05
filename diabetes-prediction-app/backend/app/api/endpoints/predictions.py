@@ -15,7 +15,7 @@ from app.api.endpoints.auth import get_current_user
 from app.ml.predictor import get_predictor
 from app.utils.pdf_generator import generate_prediction_report
 
-router = APIRouter(prefix="/predictions", tags=["Predictions"])
+router = APIRouter(prefix="/predictions", tags=["predictions"])
 
 
 @router.post(
@@ -282,3 +282,4 @@ def download_prediction_report(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
