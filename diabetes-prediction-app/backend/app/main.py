@@ -27,13 +27,10 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=600,
-    
 )
 
 # Include routers
@@ -64,6 +61,7 @@ def root():
 def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
+
 
 
 
