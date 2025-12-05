@@ -11,6 +11,8 @@ from app.core.security import (
 from app.core.config import settings
 from app.schemas.user import UserCreate, UserLogin, Token, User
 from app.models.user import User as UserModel
+from app.models.patient import Patient
+from app.schemas.user import UserRole
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -81,6 +83,16 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
+    if user_data.role == "patient" or user_data.role == UserRole.PATIENT:
+        new_patient = Patient(
+            user_id=new_user.id,
+            name=new_user.full_name,
+            date_of_birth=None, 
+            gender="Other"      
+        )
+        db.add(new_patient)
+        db.commit()
+
     return new_user
 
 
@@ -110,5 +122,6 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
 def get_current_user_info(current_user: UserModel = Depends(get_current_user)):
     """Get current user information"""
     return current_user
+
 
 
