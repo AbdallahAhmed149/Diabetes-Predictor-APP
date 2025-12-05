@@ -7,7 +7,7 @@ from app.models.patient import Patient as PatientModel
 from app.models.user import User as UserModel
 from app.api.endpoints.auth import get_current_user
 
-router = APIRouter(prefix="/patients", tags=["Patients"])
+router = APIRouter(prefix="/patients", tags=["patients"])
 
 
 @router.post("/", response_model=PatientSchema, status_code=status.HTTP_201_CREATED)
@@ -133,3 +133,4 @@ def delete_patient(
 
     db.delete(patient)
     db.commit()
+
