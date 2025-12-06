@@ -55,7 +55,7 @@ class PredictionInput(BaseModel):
 class PredictionCreate(PredictionInput):
     """Schema for creating a prediction"""
 
-    patient_id: Optional[int] = None
+    patient_id: int
 
 
 class PredictionResponse(BaseModel):
@@ -110,4 +110,5 @@ class PredictionDetail(PredictionResponse):
     insulin_level: float
     hba1c: float
     diabetes_risk_score: float
+
 
