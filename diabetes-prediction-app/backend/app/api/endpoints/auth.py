@@ -122,3 +122,40 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
 def get_current_user_info(current_user: UserModel = Depends(get_current_user)):
     """Get current user information"""
     return current_user
+
+
+@router.post("/me/ensure-patient")
+def ensure_patient_record(
+    current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """Ensure a patient record exists for the current patient user.
+    This fixes existing patient accounts that were created before auto-creation was added.
+    """
+    if current_user.role.value != "patient":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only patient users need patient records",
+        )
+
+    # Check if patient record already exists
+    existing_patient = (
+        db.query(PatientModel).filter(PatientModel.user_id == current_user.id).first()
+    )
+
+    if existing_patient:
+        return {
+            "message": "Patient record already exists",
+            "patient_id": existing_patient.id,
+        }
+
+    # Create new patient record
+    patient_code = f"PAT-{uuid.uuid4().hex[:8].upper()}"
+    new_patient = PatientModel(
+        user_id=current_user.id,
+        patient_code=patient_code,
+    )
+    db.add(new_patient)
+    db.commit()
+    db.refresh(new_patient)
+
+    return {"message": "Patient record created", "patient_id": new_patient.id}
