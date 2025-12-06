@@ -22,6 +22,7 @@ export default function PredictPage() {
     const [success, setSuccess] = useState(false);
     const [result, setResult] = useState<PredictionResult | null>(null);
     const [userRole, setUserRole] = useState<string>('');
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const [loadingUserRole, setLoadingUserRole] = useState(true);
 
     const [formData, setFormData] = useState({
@@ -69,30 +70,45 @@ export default function PredictPage() {
     const fetchUserAndPatients = async () => {
         try {
             setLoadingUserRole(true);
-            // First fetch user to get role
+            // First fetch user to get role and ID
             const userResponse = await authAPI.getMe();
             const role = userResponse.data.role;
+            const userId = userResponse.data.id;
+            
             setUserRole(role);
+            setCurrentUserId(userId);
 
             // Then fetch patients
             const patientsResponse = await patientsAPI.list();
             setPatients(patientsResponse.data);
 
-            // For patients, auto-select their patient_id
+            // CRITICAL FIX: For patients, auto-select their own patient_id
             if (role === 'patient' && patientsResponse.data.length > 0) {
-                setFormData(prev => ({
-                    ...prev,
-                    patient_id: patientsResponse.data[0].id.toString()
-                }));
+                // Find the patient record that belongs to this user
+                const userPatient = patientsResponse.data.find(
+                    (p: any) => p.user_id === userId || p.id === userId
+                );
+                
+                if (userPatient) {
+                    setFormData(prev => ({
+                        ...prev,
+                        patient_id: userPatient.id.toString()
+                    }));
+                } else {
+                    // Fallback: use the first patient (if they only have one record)
+                    setFormData(prev => ({
+                        ...prev,
+                        patient_id: patientsResponse.data[0].id.toString()
+                    }));
+                }
             }
         } catch (err) {
-            console.error('Failed to load data');
+            console.error('Failed to load data:', err);
+            setError('Failed to load user information. Please refresh the page.');
         } finally {
             setLoadingUserRole(false);
         }
     };
-
-
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -102,8 +118,26 @@ export default function PredictPage() {
         setLoading(true);
 
         try {
+            // CRITICAL FIX: Ensure patient_id is always a valid integer
+            let patientId = parseInt(formData.patient_id);
+            
+            // If patient_id is still invalid and user is a patient, use their own ID
+            if (!patientId && userRole === 'patient' && patients.length > 0) {
+                const userPatient = patients.find(
+                    (p: any) => p.user_id === currentUserId
+                );
+                patientId = userPatient ? userPatient.id : patients[0].id;
+            }
+
+            // Final validation
+            if (!patientId || isNaN(patientId)) {
+                setError('Unable to determine patient ID. Please contact support.');
+                setLoading(false);
+                return;
+            }
+
             const payload = {
-                patient_id: parseInt(formData.patient_id),
+                patient_id: patientId, // This will now always be a valid integer
                 age: parseInt(formData.age),
                 gender: formData.gender,
                 bmi: parseFloat(formData.bmi),
@@ -207,7 +241,7 @@ export default function PredictPage() {
             ) : (
                 <div className="card">
                     <form onSubmit={handleSubmit}>
-                        {/* Patient selection - only shown to doctors */}
+                        {/* Patient selection - ONLY shown to doctors */}
                         {userRole === 'doctor' && (
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
@@ -226,6 +260,21 @@ export default function PredictPage() {
                                         </option>
                                     ))}
                                 </select>
+                            </div>
+                        )}
+
+                        {/* Show info message for patients */}
+                        {userRole === 'patient' && (
+                            <div style={{ 
+                                marginBottom: '1.5rem', 
+                                padding: '1rem', 
+                                background: '#e0f2fe',
+                                borderRadius: '8px',
+                                borderLeft: '4px solid #0284c7'
+                            }}>
+                                <p style={{ margin: 0, color: '#075985' }}>
+                                    ℹ️ This assessment is for your personal health record.
+                                </p>
                             </div>
                         )}
 
