@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from datetime import timedelta
+import uuid
 from app.core.database import get_db
 from app.core.security import (
     create_access_token,
@@ -11,6 +12,7 @@ from app.core.security import (
 from app.core.config import settings
 from app.schemas.user import UserCreate, UserLogin, Token, User
 from app.models.user import User as UserModel
+from app.models.patient import Patient as PatientModel
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -81,6 +83,16 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
+    # Auto-create patient record for patient users
+    if new_user.role.value == "patient":
+        patient_code = f"PAT-{uuid.uuid4().hex[:8].upper()}"
+        new_patient = PatientModel(
+            user_id=new_user.id,
+            patient_code=patient_code,
+        )
+        db.add(new_patient)
+        db.commit()
+
     return new_user
 
 
@@ -110,7 +122,3 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
 def get_current_user_info(current_user: UserModel = Depends(get_current_user)):
     """Get current user information"""
     return current_user
-
-
-
-
