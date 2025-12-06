@@ -74,6 +74,16 @@ export default function PredictPage() {
             const role = userResponse.data.role;
             setUserRole(role);
 
+            // For patient users, ensure they have a patient record
+            // This fixes existing patient accounts created before auto-creation
+            if (role === 'patient') {
+                try {
+                    await authAPI.ensurePatient();
+                } catch (err) {
+                    // Ignore errors - record may already exist or user is not patient
+                }
+            }
+
             // Then fetch patients
             const patientsResponse = await patientsAPI.list();
             setPatients(patientsResponse.data);
