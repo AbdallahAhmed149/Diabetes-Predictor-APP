@@ -5,7 +5,7 @@ from datetime import date, datetime
 
 class PatientBase(BaseModel):
     patient_code: str
-    date_of_birth: date
+    date_of_birth: Optional[date] = None
     phone: Optional[str] = None
     address: Optional[str] = None
     emergency_contact: Optional[str] = None
