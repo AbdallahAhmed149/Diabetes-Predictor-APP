@@ -1,6 +1,6 @@
 import os
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Union
 
 
 class Settings(BaseSettings):
@@ -18,7 +18,17 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
     # CORS
-    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    # Can be set as environment variable (comma-separated string) or will use localhost default
+    BACKEND_CORS_ORIGINS: Union[List[str], str] = ["http://localhost:3000", "http://localhost:8000"]
+    
+    @property
+    def cors_origins(self) -> List[str]:
+        """Parse CORS origins from environment variable or use defaults"""
+        if isinstance(self.BACKEND_CORS_ORIGINS, str):
+            # If it's a string from env var, split by comma and strip whitespace
+            origins = [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",")]
+            return origins
+        return self.BACKEND_CORS_ORIGINS
 
     # ML Models
     ML_MODELS_PATH: str = os.path.join(
