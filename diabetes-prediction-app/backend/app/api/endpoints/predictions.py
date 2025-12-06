@@ -39,7 +39,7 @@ def create_prediction(
 
     # Create prediction record
     new_prediction = PredictionModel(
-        patient_id=prediction_data.patient_id if current_user.role.value == "doctor" else None,
+        patient_id=prediction_data.patient_id,
         doctor_id=current_user.id if current_user.role.value == "doctor" else None,
         **input_dict,
         risk_probability=result["risk_probability"],
@@ -282,6 +282,7 @@ def download_prediction_report(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
 
 
 
