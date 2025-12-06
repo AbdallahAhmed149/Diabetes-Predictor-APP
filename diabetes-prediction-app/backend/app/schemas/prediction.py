@@ -62,7 +62,7 @@ class PredictionResponse(BaseModel):
     """Schema for prediction response"""
 
     id: int
-    patient_id: int
+    patient_id: Optional[int] = None
     doctor_id: Optional[int]
 
     # Prediction results
@@ -110,5 +110,6 @@ class PredictionDetail(PredictionResponse):
     insulin_level: float
     hba1c: float
     diabetes_risk_score: float
+
 
 
