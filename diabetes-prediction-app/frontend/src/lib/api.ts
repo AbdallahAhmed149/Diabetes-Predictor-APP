@@ -26,6 +26,7 @@ export const authAPI = {
     register: (data: any) => api.post('/auth/register', data),
     login: (data: any) => api.post('/auth/login', data),
     getMe: () => api.get('/auth/me'),
+    ensurePatient: () => api.post('/auth/me/ensure-patient'),
 };
 
 // Patients API
@@ -47,5 +48,3 @@ export const predictionsAPI = {
 };
 
 export default api;
-
-
