@@ -12,7 +12,7 @@ try:
     print("ML models loaded successfully!")
 except Exception as e:
     print(f"Warning: Could not preload models: {e}")
-    
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
@@ -27,7 +27,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -61,10 +61,3 @@ def root():
 def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
-
-
-
-
-
-
-
