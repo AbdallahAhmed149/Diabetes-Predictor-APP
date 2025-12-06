@@ -27,26 +27,6 @@ def create_prediction(
     db: Session = Depends(get_db),
 ):
     """Create a new diabetes prediction"""
-    
-    # ADDED: Validate that the patient exists
-    patient = db.query(PatientModel).filter(
-        PatientModel.id == prediction_data.patient_id
-    ).first()
-    
-    if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Patient with ID {prediction_data.patient_id} not found. Please ensure you have a patient record created."
-        )
-    
-    # ADDED: For patients, verify they're making predictions for themselves
-    if current_user.role.value == "patient":
-        # Check if the patient_id belongs to the current user
-        if patient.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only create predictions for your own patient record."
-            )
 
     # Get predictor
     predictor = get_predictor()
@@ -55,13 +35,7 @@ def create_prediction(
     input_dict = prediction_data.model_dump(exclude={"patient_id"})
 
     # Make prediction
-    try:
-        result = predictor.predict(input_dict)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Prediction failed: {str(e)}"
-        )
+    result = predictor.predict(input_dict)
 
     # Create prediction record
     new_prediction = PredictionModel(
@@ -99,15 +73,13 @@ def list_predictions(
     # If patient, show only their predictions
     if current_user.role.value == "patient":
         # Find patient record for this user
-        patient = db.query(PatientModel).filter(
-            PatientModel.user_id == current_user.id
-        ).first()
-        
-        if not patient:
-            # IMPROVED: Return empty list instead of error for better UX
+        from app.models.patient import Patient
+
+        patient = db.query(Patient).filter(Patient.user_id == current_user.id).first()
+        if patient:
+            query = query.filter(PredictionModel.patient_id == patient.id)
+        else:
             return []
-        
-        query = query.filter(PredictionModel.patient_id == patient.id)
 
     predictions = (
         query.order_by(PredictionModel.created_at.desc())
@@ -150,10 +122,9 @@ def get_prediction(
 
     # Check access
     if current_user.role.value == "patient":
-        patient = db.query(PatientModel).filter(
-            PatientModel.user_id == current_user.id
-        ).first()
-        
+        from app.models.patient import Patient
+
+        patient = db.query(Patient).filter(Patient.user_id == current_user.id).first()
         if not patient or prediction.patient_id != patient.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
@@ -177,10 +148,9 @@ def get_patient_predictions(
     """Get all predictions for a specific patient"""
     # Check access
     if current_user.role.value == "patient":
-        patient = db.query(PatientModel).filter(
-            PatientModel.user_id == current_user.id
-        ).first()
-        
+        from app.models.patient import Patient
+
+        patient = db.query(Patient).filter(Patient.user_id == current_user.id).first()
         if not patient or patient.id != patient_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
@@ -312,3 +282,4 @@ def download_prediction_report(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
