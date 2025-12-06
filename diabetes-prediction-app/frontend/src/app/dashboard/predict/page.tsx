@@ -22,6 +22,7 @@ export default function PredictPage() {
     const [success, setSuccess] = useState(false);
     const [result, setResult] = useState<PredictionResult | null>(null);
     const [userRole, setUserRole] = useState<string>('');
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null); // Added state for User ID
     const [loadingUserRole, setLoadingUserRole] = useState(true);
 
     const [formData, setFormData] = useState({
@@ -72,27 +73,29 @@ export default function PredictPage() {
             // First fetch user to get role
             const userResponse = await authAPI.getMe();
             const role = userResponse.data.role;
+            const userId = userResponse.data.id;
+            
             setUserRole(role);
+            setCurrentUserId(userId);
 
             // Then fetch patients
             const patientsResponse = await patientsAPI.list();
             setPatients(patientsResponse.data);
 
             // For patients, auto-select their patient_id
-            if (role === 'patient' && patientsResponse.data.length > 0) {
+            // Fixed: Check role case-insensitively and handle if list is empty by relying on userId later
+            if (role.toLowerCase() === 'patient' && patientsResponse.data.length > 0) {
                 setFormData(prev => ({
                     ...prev,
                     patient_id: patientsResponse.data[0].id.toString()
                 }));
             }
         } catch (err) {
-            console.error('Failed to load data');
+            console.error('Failed to load data', err);
         } finally {
             setLoadingUserRole(false);
         }
     };
-
-
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -101,9 +104,24 @@ export default function PredictPage() {
         setResult(null);
         setLoading(true);
 
+        // Logic to determine the Patient ID to submit
+        let submitPatientId = formData.patient_id;
+
+        // If user is a patient and form ID is empty, use their User ID
+        if (userRole.toLowerCase() === 'patient' && !submitPatientId && currentUserId) {
+            submitPatientId = currentUserId.toString();
+        }
+
+        // Final validation before sending
+        if (!submitPatientId) {
+            setError("Could not identify patient ID. Please try refreshing the page.");
+            setLoading(false);
+            return;
+        }
+
         try {
             const payload = {
-                patient_id: parseInt(formData.patient_id),
+                patient_id: parseInt(submitPatientId), // Use the calculated ID
                 age: parseInt(formData.age),
                 gender: formData.gender,
                 bmi: parseFloat(formData.bmi),
@@ -171,14 +189,16 @@ export default function PredictPage() {
                 <h1 style={{ margin: 0 }}>Diabetes Risk Assessment</h1>
             </div>
 
-            {error && <div className="error-message" style={{ marginBottom: '1rem' }}>{error}</div>}
+            {error && <div className="error-message" style={{ marginBottom: '1rem', padding: '10px', background: '#f8d7da', color: '#721c24', borderRadius: '4px' }}>{error}</div>}
 
             {success && result && (
                 <div className="card" style={{
                     marginBottom: '2rem',
                     padding: '2rem',
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white'
+                    color: 'white',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                 }}>
                     <h2 style={{ marginBottom: '1rem', color: 'white' }}>✅ Prediction Complete</h2>
                     <div style={{ fontSize: '3rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
@@ -190,7 +210,9 @@ export default function PredictPage() {
                         background: getRiskColor(result.risk_level),
                         borderRadius: '8px',
                         display: 'inline-block',
-                        marginBottom: '1rem'
+                        marginBottom: '1rem',
+                        color: 'white',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.2)'
                     }}>
                         {result.risk_level} Risk
                     </div>
@@ -205,10 +227,10 @@ export default function PredictPage() {
                     <p>Loading...</p>
                 </div>
             ) : (
-                <div className="card">
+                <div className="card" style={{ padding: '2rem', background: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                     <form onSubmit={handleSubmit}>
                         {/* Patient selection - only shown to doctors */}
-                        {userRole === 'doctor' && (
+                        {userRole.toLowerCase() === 'doctor' && (
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
                                     Select Patient *
@@ -218,6 +240,7 @@ export default function PredictPage() {
                                     value={formData.patient_id}
                                     onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
                                     required
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 >
                                     <option value="">Choose a patient...</option>
                                     {patients.map(p => (
@@ -229,7 +252,7 @@ export default function PredictPage() {
                             </div>
                         )}
 
-                        <h3 style={{ marginBottom: '1rem', color: 'var(--primary)' }}>👤 Demographics</h3>
+                        <h3 style={{ marginBottom: '1rem', color: '#4a5568', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem' }}>👤 Demographics</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>Age *</label>
@@ -242,6 +265,7 @@ export default function PredictPage() {
                                     min="18"
                                     max="120"
                                     placeholder="35"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -250,6 +274,7 @@ export default function PredictPage() {
                                     className="input"
                                     value={formData.gender}
                                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 >
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
@@ -262,6 +287,7 @@ export default function PredictPage() {
                                     className="input"
                                     value={formData.ethnicity}
                                     onChange={(e) => setFormData({ ...formData, ethnicity: e.target.value })}
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 >
                                     <option value="White">White</option>
                                     <option value="Black">Black</option>
@@ -276,6 +302,7 @@ export default function PredictPage() {
                                     className="input"
                                     value={formData.education_level}
                                     onChange={(e) => setFormData({ ...formData, education_level: e.target.value })}
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 >
                                     <option value="No formal">No formal</option>
                                     <option value="Highschool">High School</option>
@@ -289,6 +316,7 @@ export default function PredictPage() {
                                     className="input"
                                     value={formData.income_level}
                                     onChange={(e) => setFormData({ ...formData, income_level: e.target.value })}
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 >
                                     <option value="Low">Low</option>
                                     <option value="Lower-Middle">Lower-Middle</option>
@@ -303,6 +331,7 @@ export default function PredictPage() {
                                     className="input"
                                     value={formData.employment_status}
                                     onChange={(e) => setFormData({ ...formData, employment_status: e.target.value })}
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 >
                                     <option value="Employed">Employed</option>
                                     <option value="Unemployed">Unemployed</option>
@@ -312,7 +341,7 @@ export default function PredictPage() {
                             </div>
                         </div>
 
-                        <h3 style={{ marginBottom: '1rem', color: 'var(--primary)' }}>📏 Physical Measurements</h3>
+                        <h3 style={{ marginBottom: '1rem', color: '#4a5568', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem' }}>📏 Physical Measurements</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>BMI *</label>
@@ -324,6 +353,7 @@ export default function PredictPage() {
                                     onChange={(e) => setFormData({ ...formData, bmi: e.target.value })}
                                     required
                                     placeholder="25.5"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -335,6 +365,7 @@ export default function PredictPage() {
                                     value={formData.waist_to_hip_ratio}
                                     onChange={(e) => setFormData({ ...formData, waist_to_hip_ratio: e.target.value })}
                                     placeholder="0.85"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -345,6 +376,7 @@ export default function PredictPage() {
                                     value={formData.heart_rate}
                                     onChange={(e) => setFormData({ ...formData, heart_rate: e.target.value })}
                                     placeholder="70"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -356,6 +388,7 @@ export default function PredictPage() {
                                     onChange={(e) => setFormData({ ...formData, systolic_bp: e.target.value })}
                                     required
                                     placeholder="120"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -367,11 +400,12 @@ export default function PredictPage() {
                                     onChange={(e) => setFormData({ ...formData, diastolic_bp: e.target.value })}
                                     required
                                     placeholder="80"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                         </div>
 
-                        <h3 style={{ marginBottom: '1rem', color: 'var(--primary)' }}>🩺 Lab Results</h3>
+                        <h3 style={{ marginBottom: '1rem', color: '#4a5568', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem' }}>🩺 Lab Results</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>Fasting Glucose *</label>
@@ -383,6 +417,7 @@ export default function PredictPage() {
                                     onChange={(e) => setFormData({ ...formData, glucose_fasting: e.target.value })}
                                     required
                                     placeholder="95"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -394,6 +429,7 @@ export default function PredictPage() {
                                     value={formData.glucose_postprandial}
                                     onChange={(e) => setFormData({ ...formData, glucose_postprandial: e.target.value })}
                                     placeholder="120"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -405,6 +441,7 @@ export default function PredictPage() {
                                     value={formData.hba1c}
                                     onChange={(e) => setFormData({ ...formData, hba1c: e.target.value })}
                                     placeholder="5.5"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -416,6 +453,7 @@ export default function PredictPage() {
                                     value={formData.insulin_level}
                                     onChange={(e) => setFormData({ ...formData, insulin_level: e.target.value })}
                                     placeholder="10"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -428,6 +466,7 @@ export default function PredictPage() {
                                     onChange={(e) => setFormData({ ...formData, cholesterol_total: e.target.value })}
                                     required
                                     placeholder="200"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -440,6 +479,7 @@ export default function PredictPage() {
                                     onChange={(e) => setFormData({ ...formData, hdl_cholesterol: e.target.value })}
                                     required
                                     placeholder="50"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -451,6 +491,7 @@ export default function PredictPage() {
                                     value={formData.ldl_cholesterol}
                                     onChange={(e) => setFormData({ ...formData, ldl_cholesterol: e.target.value })}
                                     placeholder="100"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -462,11 +503,12 @@ export default function PredictPage() {
                                     value={formData.triglycerides}
                                     onChange={(e) => setFormData({ ...formData, triglycerides: e.target.value })}
                                     placeholder="150"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                         </div>
 
-                        <h3 style={{ marginBottom: '1rem', color: 'var(--primary)' }}>🏃 Lifestyle Factors</h3>
+                        <h3 style={{ marginBottom: '1rem', color: '#4a5568', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem' }}>🏃 Lifestyle Factors</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem' }}>Smoking Status *</label>
@@ -474,6 +516,7 @@ export default function PredictPage() {
                                     className="input"
                                     value={formData.smoking_status}
                                     onChange={(e) => setFormData({ ...formData, smoking_status: e.target.value })}
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 >
                                     <option value="Never">Never</option>
                                     <option value="Former">Former</option>
@@ -488,6 +531,7 @@ export default function PredictPage() {
                                     value={formData.alcohol_consumption_per_week}
                                     onChange={(e) => setFormData({ ...formData, alcohol_consumption_per_week: e.target.value })}
                                     placeholder="0"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -499,6 +543,7 @@ export default function PredictPage() {
                                     onChange={(e) => setFormData({ ...formData, physical_activity_minutes_per_week: e.target.value })}
                                     required
                                     placeholder="150"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -510,6 +555,7 @@ export default function PredictPage() {
                                     value={formData.diet_score}
                                     onChange={(e) => setFormData({ ...formData, diet_score: e.target.value })}
                                     placeholder="5"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -521,6 +567,7 @@ export default function PredictPage() {
                                     value={formData.sleep_hours_per_day}
                                     onChange={(e) => setFormData({ ...formData, sleep_hours_per_day: e.target.value })}
                                     placeholder="7"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                             <div>
@@ -532,11 +579,12 @@ export default function PredictPage() {
                                     value={formData.screen_time_hours_per_day}
                                     onChange={(e) => setFormData({ ...formData, screen_time_hours_per_day: e.target.value })}
                                     placeholder="4"
+                                    style={{ width: '100%', padding: '0.8rem', borderRadius: '4px', border: '1px solid #ddd' }}
                                 />
                             </div>
                         </div>
 
-                        <h3 style={{ marginBottom: '1rem', color: 'var(--primary)' }}>🏥 Medical History</h3>
+                        <h3 style={{ marginBottom: '1rem', color: '#4a5568', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem' }}>🏥 Medical History</h3>
                         <div style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
                             <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                                 <input
@@ -571,7 +619,7 @@ export default function PredictPage() {
                             type="submit"
                             className="btn btn-primary"
                             disabled={loading}
-                            style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }}
+                            style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', backgroundColor: '#4299e1', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', opacity: loading ? 0.7 : 1 }}
                         >
                             {loading ? '🔄 Analyzing...' : '🎯 Calculate Risk'}
                         </button>
