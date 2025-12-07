@@ -22,6 +22,7 @@ app = FastAPI(
     version=settings.APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
+    redirect_slashes=False,  # Prevent 307 redirects for trailing slash mismatches
 )
 
 # Configure CORS
