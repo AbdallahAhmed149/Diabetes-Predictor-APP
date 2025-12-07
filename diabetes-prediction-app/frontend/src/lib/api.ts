@@ -31,19 +31,19 @@ export const authAPI = {
 
 // Patients API
 export const patientsAPI = {
-    list: () => api.get('/patients'),
-    create: (data: any) => api.post('/patients', data),
-    get: (id: number) => api.get(`/patients/${id}`),
-    update: (id: number, data: any) => api.put(`/patients/${id}`, data),
-    delete: (id: number) => api.delete(`/patients/${id}`),
+    list: () => api.get('/patients/'),
+    create: (data: any) => api.post('/patients/', data),
+    get: (id: number) => api.get(`/patients/${id}/`),
+    update: (id: number, data: any) => api.put(`/patients/${id}/`, data),
+    delete: (id: number) => api.delete(`/patients/${id}/`),
 };
 
 // Predictions API
 export const predictionsAPI = {
-    create: (data: any) => api.post('/predictions', data),
-    list: () => api.get('/predictions'),
-    get: (id: number) => api.get(`/predictions/${id}`),
-    getByPatient: (patientId: number) => api.get(`/predictions/patient/${patientId}`),
+    create: (data: any) => api.post('/predictions/', data),
+    list: () => api.get('/predictions/'),
+    get: (id: number) => api.get(`/predictions/${id}/`),
+    getByPatient: (patientId: number) => api.get(`/predictions/patient/${patientId}/`),
     downloadReport: (id: number) => api.get(`/predictions/${id}/report`, { responseType: 'blob' }),
 };
 
